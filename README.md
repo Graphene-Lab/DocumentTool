@@ -1,6 +1,6 @@
-# WordTool — Word (DOCX) agent tool
+# DocumentTool — Document (DOCX) agent tool
 
-Word document operations for LLM agents: open/create, paragraphs, tables,
+Document (DOCX) operations for LLM agents: open/create, paragraphs, tables,
 headers/footers, charts, images. Implements `AIOrchestrator.API.IAgentTool`.
 
 ## What it is
@@ -13,12 +13,12 @@ reflection pipeline.
 
 ## Usage
 
-- **Host with dynamic loading** (AIOffice): drop `WordTool.dll` + `WordTool.xml`
+- **Host with dynamic loading** (AIOffice): drop `DocumentTool.dll` + `DocumentTool.xml`
   into the host's `Tools/` directory. The host scans the folder at startup and on
   new files (30 s debounce).
 - **Host with static reference**: `ProjectReference` the project (or
-  `PackageReference Graphene.WordTool`) and register
-  `typeof(AIOrchestrator.API.WordTool)` in the agent types array passed to
+  `PackageReference Graphene.DocumentTool`) and register
+  `typeof(AIOrchestrator.API.DocumentTool)` in the agent types array passed to
   `AgentOrchestrator.ExecuteAction`.
 
 ## Build
@@ -28,12 +28,12 @@ dotnet build -c Release
 ```
 
 Compiled as **AnyCPU, RID-neutral**: the same `.dll` runs on Linux, Windows, macOS
-and iOS. The XML documentation file (`WordTool.xml`) is generated and must ship next
+and iOS. The XML documentation file (`DocumentTool.xml`) is generated and must ship next
 to the assembly — `UISupportGeneric` reads method/parameter descriptions from it.
 
 ## NuGet
 
-`Graphene.WordTool`, date-versioned `1.yy.MM.dd`, published automatically on every
+`Graphene.DocumentTool`, date-versioned `1.yy.MM.dd`, published automatically on every
 `master` push (`.github/workflows/publish.yml`, `NUGET_API_KEY` repo secret).
 Local pack pushes with the `NuGetApiKey` env var; skip with `-p:SkipNuGetPush=true`.
 

@@ -10,14 +10,14 @@ using UISupportGeneric;
 //
 //  Verifies the long-running/completion-event architecture end to end:
 //    • deterministic (no-LLM) tests: AgentTaskRegistry, AttachmentSandbox,
-//      WordTool.CreateDocumentFromContext validation errors;
+//      DocumentTool.CreateDocumentFromContext validation errors;
 //    • agent tests (need the DeepSeekBridge at 127.0.0.1:8787): the agent must
 //      discover the sandbox path of a chat attachment (the [Attachments
 //      available locally] notice), pass it to create_document_from_context,
 //      and — in responsive mode — receive the TaskCompleted event on the NEXT
 //      ExecuteAction (AgentState.Initiative) and report the generated PDF.
 //
-//  GENERATION IS SIMULATED BY DEFAULT: WordTool.SimulateCreateDocument replaces
+//  GENERATION IS SIMULATED BY DEFAULT: DocumentTool.SimulateCreateDocument replaces
 //  CreateDocument.Create (CreateInternal is already covered by its own tests;
 //  a real run costs minutes + provider tokens) and reproduces the same artifacts
 //  (PDF + ".info"). Pass --real to exercise the real pipeline (opt-in, slow).
@@ -51,7 +51,7 @@ namespace CreateDocumentAgentTests
             // without re-running the ~20 min responsive generation).
             var onlyT5 = args.Contains("t5");
             // By default the heavy document generation (CreateDocument.Create → CreateInternal) is SIMULATED
-            // via the WordTool.SimulateCreateDocument seam: CreateInternal is already covered by its own
+            // via the DocumentTool.SimulateCreateDocument seam: CreateInternal is already covered by its own
             // tests, and a real run costs minutes + provider tokens. The simulation reproduces the same
             // observable artifacts (PDF + ".info"), so the orchestration checks stay meaningful. Pass --real
             // to exercise the actual pipeline end-to-end (opt-in, slow).
@@ -61,7 +61,7 @@ namespace CreateDocumentAgentTests
 
             // Empirical measurement of the summarize compression ratio (--measure-summary <path.md>):
             // runs MarkdownSummarize.SummarizeFile via reflection (internal class) on a real file and prints
-            // raw/summary sizes + ratio. Used to calibrate the sync pre-check of WordTool.CreateDocumentFromContext.
+            // raw/summary sizes + ratio. Used to calibrate the sync pre-check of DocumentTool.CreateDocumentFromContext.
             var measureIdx = Array.IndexOf(args, "--measure-summary");
             if (measureIdx >= 0)
             {
@@ -143,12 +143,12 @@ namespace CreateDocumentAgentTests
             if (pass) ok++; else fail++;
         }
 
-        /// <summary>Installs the WordTool simulation seam: produces the same artifacts as the real pipeline
+        /// <summary>Installs the DocumentTool simulation seam: produces the same artifacts as the real pipeline
         /// (PDF + "# Cited documents:" .info in the output folder) and returns Success — without any LLM call.
         /// Mirrors CreateDocument.CreateInternal's custom-output behavior so outcome checks stay valid.</summary>
         static void InstallDocumentSimulation()
         {
-            WordTool.SimulateCreateDocument = (dto, mdPaths, outDir) =>
+            DocumentTool.SimulateCreateDocument = (dto, mdPaths, outDir) =>
             {
                 Directory.CreateDirectory(outDir);
                 var pdfName = CreateDocument.OutputFileName(dto.DocumentType?.ToUpper() ?? "DOC", dto.Subject, DateTime.UtcNow.ToString("yyyy-MM-dd"));
@@ -213,12 +213,12 @@ namespace CreateDocumentAgentTests
             catch (Exception ex) { Record(false, "T2 attachment sandbox", ex.Message); }
         }
 
-        // ── T3: WordTool.CreateDocumentFromContext validation errors (no LLM) ──
+        // ── T3: DocumentTool.CreateDocumentFromContext validation errors (no LLM) ──
         static void TestValidationErrors()
         {
             try
             {
-                var w = new WordTool();
+                var w = new DocumentTool();
                 var r1 = w.CreateDocumentFromContext(new List<string> { "/x.md" }, "/out", "report", "s", format: "docx");
                 var r2 = w.CreateDocumentFromContext(new List<string>(), "/out", "report", "s");
                 var r3 = w.CreateDocumentFromContext(new List<string> { "/missing.md" }, "/out", "report", "s");
@@ -243,7 +243,7 @@ namespace CreateDocumentAgentTests
                 var sandboxPath = AttachmentSandbox.Persist(attach);
                 if (sandboxPath == null) { Record(false, "T6 non-md context resolution", "persist returned null"); return; }
 
-                var w = new WordTool { AsyncTaskRegistry = new AgentTaskRegistry() };
+                var w = new DocumentTool { AsyncTaskRegistry = new AgentTaskRegistry() };
                 var result = w.CreateDocumentFromContext(new List<string> { sandboxPath }, "/report_txt", "report", "Contratto di fornitura");
                 var taskId = ParseTaskId(result);
                 if (taskId == null) { Record(false, "T6 non-md context resolution", $"no task id: {result}"); return; }
@@ -266,7 +266,7 @@ namespace CreateDocumentAgentTests
             try
             {
                 File.WriteAllText(Path.Combine(sandbox, "raw_note.txt"), "nota senza shadow");
-                var w = new WordTool();
+                var w = new DocumentTool();
                 var result = w.CreateDocumentFromContext(new List<string> { "/raw_note.txt" }, "/out", "report", "s");
                 var ok = result.StartsWith("Error: cannot obtain Markdown");
                 Record(ok, "T7 cannot obtain markdown", $"result='{result}'");
@@ -369,7 +369,7 @@ namespace CreateDocumentAgentTests
         {
             try
             {
-                var w = new WordTool();
+                var w = new DocumentTool();
                 var r1 = w.CreateDocumentFromContext(new List<string> { "../../evil.md" }, "/out", "report", "s");
                 var r2 = w.CreateDocumentFromContext(new List<string> { "C:\\Windows\\system32\\drivers\\etc\\hosts" }, "/out", "report", "s");
                 var ok1 = r1.StartsWith("Error:") && (r1.Contains("escapes") || r1.Contains("outside"));
@@ -467,7 +467,7 @@ namespace CreateDocumentAgentTests
 
                 var prompt = "Crea un documento PDF completo e ben strutturato. Usa create_document_from_context passando il file allegato (vedi l'avviso sugli allegati disponibili in locale), con destinationFolder '/report_output', documentType 'report', subject 'Procedura di onboarding'. Attendi l'esito.";
                 var result1 = orch.ExecuteAction(prompt,
-                    new[] { typeof(FileTool), typeof(WordTool) },
+                    new[] { typeof(FileTool), typeof(DocumentTool) },
                     attachments: new[] { new FileAttachment("procedura_onboarding.md", attachContent) },
                     maxIterations: 40);
                 var inProgress = result1.Message ?? "";
@@ -490,7 +490,7 @@ namespace CreateDocumentAgentTests
                 if (!finished) return;
 
                 // Run 2: the drain delivers the completion as an initiative turn before the user prompt.
-                var result2 = orch.ExecuteAction("ok", new[] { typeof(FileTool), typeof(WordTool) }, maxIterations: 20);
+                var result2 = orch.ExecuteAction("ok", new[] { typeof(FileTool), typeof(DocumentTool) }, maxIterations: 20);
                 var outDir = Path.Combine(sandbox, "report_output");
                 var pdf = Directory.Exists(outDir) ? Directory.GetFiles(outDir, "*.pdf").FirstOrDefault() : null;
                 var info = pdf != null ? Path.ChangeExtension(pdf, ".info") : null;
@@ -548,7 +548,7 @@ namespace CreateDocumentAgentTests
 
                 var prompt = "Crea un documento PDF completo e ben strutturato. Usa create_document_from_context passando il file allegato (vedi l'avviso), destinationFolder '/report_sync', documentType 'report', subject 'Progetto Aquila'. Attendi l'esito.";
                 var result = orch.ExecuteAction(prompt,
-                    new[] { typeof(FileTool), typeof(WordTool) },
+                    new[] { typeof(FileTool), typeof(DocumentTool) },
                     attachments: new[] { new FileAttachment("progetto_aquila.md", attachContent) },
                     maxIterations: 40);
                 var outDir = Path.Combine(sandbox, "report_sync");

@@ -13,15 +13,15 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Papyrine_SponsorshipLicenseIgnored>true</Papyrine_SponsorshipLicenseIgnored>
     <Configurations>Debug;Release;Test</Configurations>
-    <PackageId>Graphene.WordTool</PackageId>
+    <PackageId>Graphene.DocumentTool</PackageId>
     <Version>$([System.DateTime]::Now.ToString("1.yy.MM.dd"))</Version>
-    <Description>Word (DOCX) agent tool for AIOrchestrator: open/create, paragraphs, tables, headers/footers, charts, images.</Description>
+    <Description>Document (DOCX) agent tool for AIOrchestrator: open/create, paragraphs, tables, headers/footers, charts, images.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <Copyright>Andrea Bruno</Copyright>
-    <RepositoryUrl>https://github.com/Graphene-Lab/WordTool</RepositoryUrl>
-    <PackageTags>agent;tool;word;docx;llm;automation</PackageTags>
+    <RepositoryUrl>https://github.com/Graphene-Lab/DocumentTool</RepositoryUrl>
+    <PackageTags>agent;tool;document;docx;llm;automation</PackageTags>
   </PropertyGroup>
 
   <!-- Dual-reference pattern (as in AIOrchestrator): the local sibling project wins when
@@ -34,11 +34,11 @@
     <PackageReference Include="Graphene.AIOrchestrator" Version="1.*" />
   </ItemGroup>
 
-  <!-- Nested test projects (WordTool.Tests, CreateDocumentAgent.Tests, UnixPath.Tests) must
+  <!-- Nested test projects (DocumentTool.Tests, CreateDocumentAgent.Tests, UnixPath.Tests) must
        NOT be compiled into this library: the SDK default **/*.cs glob would otherwise
        include their sources (Main + duplicate tool types), polluting the plugin assembly. -->
   <ItemGroup>
-    <Compile Remove="WordTool.Tests\**\*.cs" />
+    <Compile Remove="DocumentTool.Tests\**\*.cs" />
     <Compile Remove="CreateDocumentAgent.Tests\**\*.cs" />
     <Compile Remove="UnixPath.Tests\**\*.cs" />
   </ItemGroup>

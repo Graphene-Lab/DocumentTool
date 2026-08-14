@@ -10,9 +10,9 @@ using DocSharp.Markdown;
 namespace AIOrchestrator.API
 {
     /// <summary>
-    /// Word document (DOCX) operations for agent use: open/create, paragraphs, tables, headers/footers, charts, images.
+    /// Document (DOCX) operations for agent use: open/create, paragraphs, tables, headers/footers, charts, images.
     /// </summary>
-    public class WordTool : BaseAgentTool, IDisposable, IFileTool
+    public class DocumentTool : BaseAgentTool, IDisposable, IFileTool
     {
         /// <summary>This tool can start long-running background document generations whose completion is
         /// delivered back to the conversation as a standard completion event (see AGENT_TOOLS_GUIDE.md).</summary>
@@ -47,7 +47,7 @@ namespace AIOrchestrator.API
         private const string WmlNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
         /// <summary>Parameterless constructor for agent activation. Call OpenOrCreate or CreateFromMarkdown before using other methods.</summary>
-        public WordTool() { }
+        public DocumentTool() { }
 
         /// <summary>Opens an existing DOCX file for editing, or creates a new one if it doesn't exist.
         /// Every edit is saved to disk automatically — no Save call needed.</summary>
@@ -73,7 +73,7 @@ namespace AIOrchestrator.API
                     File.Copy(resolved, copy, overwrite: true);
                     _document = OpenEditable(copy);
                     _filePath = copy;
-                    Log.LogStep($"WordTool.OpenOrCreate: opened copy of '{filePath}' at '{copy}'");
+                    Log.LogStep($"DocumentTool.OpenOrCreate: opened copy of '{filePath}' at '{copy}'");
                     return $"Opened '{Path.GetFileName(resolved)}' as a copy at '{Path.GetFileName(copy)}'. Original untouched.";
                 }
 
@@ -91,7 +91,7 @@ namespace AIOrchestrator.API
                 _document = OpenEditable(resolved);
                 _filePath = resolved;
                 _fileCreatedThisSession = created;
-                Log.LogStep($"WordTool.OpenOrCreate: {(created ? "created" : "opened")} '{resolved}'");
+                Log.LogStep($"DocumentTool.OpenOrCreate: {(created ? "created" : "opened")} '{resolved}'");
                 return created ? $"Created '{Path.GetFileName(resolved)}'." : $"Opened '{Path.GetFileName(resolved)}'.";
             }
             catch (Exception ex)
@@ -131,7 +131,7 @@ namespace AIOrchestrator.API
                 CloseDocument(saveFirst: false);
                 File.Copy(latest, _filePath, overwrite: true);
                 _document = OpenEditable(_filePath);
-                Log.LogStep($"WordTool.Restore: restored from '{backupName}'");
+                Log.LogStep($"DocumentTool.Restore: restored from '{backupName}'");
                 return $"Restored from backup '{backupName}'. Backup preserved.";
             }
             catch (Exception ex)
@@ -167,7 +167,7 @@ namespace AIOrchestrator.API
             var paras = body.Elements<Paragraph>().ToList();
             var tables = body.Elements<Table>().ToList();
             var totalText = string.Concat(paras.SelectMany(p => p.InnerText));
-            Log.LogStep($"WordTool.GetDocumentInfo: {paras.Count} paragraphs, {tables.Count} tables");
+            Log.LogStep($"DocumentTool.GetDocumentInfo: {paras.Count} paragraphs, {tables.Count} tables");
             return JsonSerializer.Serialize(new
             {
                 paragraphs = paras.Count,
@@ -198,10 +198,10 @@ namespace AIOrchestrator.API
             if (index == null)
             {
                 AppendBody(body, para);
-                return Done($"WordTool.AddParagraph: appended '{Truncate(text, 60)}'", $"Paragraph appended. ({text.Length} chars)");
+                return Done($"DocumentTool.AddParagraph: appended '{Truncate(text, 60)}'", $"Paragraph appended. ({text.Length} chars)");
             }
             var err = InsertIndex(body, index, out var idx);
-            return err ?? Done($"WordTool.AddParagraph: inserted at index {index}, text='{Truncate(text, 60)}'", para, idx, $"Paragraph inserted at index {index}. ({text.Length} chars)");
+            return err ?? Done($"DocumentTool.AddParagraph: inserted at index {index}, text='{Truncate(text, 60)}'", para, idx, $"Paragraph inserted at index {index}. ({text.Length} chars)");
         });
 
         /// <summary>Replaces all occurrences of oldText with newText in the document body.</summary>
@@ -240,7 +240,7 @@ namespace AIOrchestrator.API
                 }
                 count += n;
             }
-            return Done($"WordTool.FindReplace: '{Truncate(oldText, 40)}' → '{Truncate(newText, 40)}' ({count} replacements)", $"{count} replacement(s) made.");
+            return Done($"DocumentTool.FindReplace: '{Truncate(oldText, 40)}' → '{Truncate(newText, 40)}' ({count} replacements)", $"{count} replacement(s) made.");
         });
 
         /// <summary>Sets font properties on all text in the document body. Properties are optional (null = unchanged).</summary>
@@ -257,7 +257,7 @@ namespace AIOrchestrator.API
                 ApplyRunProps(run, fontName, fontSize, bold, italic, null, null);
                 changed++;
             }
-            return Done($"WordTool.SetDocumentFont: font={fontName ?? "(unchanged)"}, size={fontSize?.ToString() ?? "-"}, bold={bold}, italic={italic} ({changed} runs)", $"Font updated on {changed} run(s).");
+            return Done($"DocumentTool.SetDocumentFont: font={fontName ?? "(unchanged)"}, size={fontSize?.ToString() ?? "-"}, bold={bold}, italic={italic} ({changed} runs)", $"Font updated on {changed} run(s).");
         });
 
         /// <summary>Adds a table with the specified data. First row is treated as header.
@@ -288,7 +288,7 @@ namespace AIOrchestrator.API
                 InsertAt(body, table, idx);
             }
             else AppendBody(body, table);
-            return Done($"WordTool.AddTable: {rows.Length} rows, {rows[0].Length} cols at index {index?.ToString() ?? "end"}", $"Table added: {rows.Length} rows × {rows[0].Length} columns.");
+            return Done($"DocumentTool.AddTable: {rows.Length} rows, {rows[0].Length} cols at index {index?.ToString() ?? "end"}", $"Table added: {rows.Length} rows × {rows[0].Length} columns.");
         });
 
         /// <summary>Returns table data as a JSON array. First row is header.</summary>
@@ -300,7 +300,7 @@ namespace AIOrchestrator.API
             if (err != null) return err;
             var result = table!.Elements<TableRow>()
                 .Select(r => r.Elements<TableCell>().Select(c => c.InnerText.Trim()).ToList()).ToList();
-            Log.LogStep($"WordTool.GetTableData: table {tableIndex}, {result.Count} rows");
+            Log.LogStep($"DocumentTool.GetTableData: table {tableIndex}, {result.Count} rows");
             return JsonSerializer.Serialize(result);
         });
 
@@ -325,13 +325,13 @@ namespace AIOrchestrator.API
                 existing.Append(new Run(new Text(title) { Space = SpaceProcessingModeValues.Preserve }));
                 existing.ParagraphProperties ??= new ParagraphProperties();
                 existing.ParagraphProperties.ParagraphStyleId = new ParagraphStyleId { Val = "Title" };
-                return Done($"WordTool.SetTitle: updated existing title to '{Truncate(title, 60)}'", $"Title updated to '{title}'.");
+                return Done($"DocumentTool.SetTitle: updated existing title to '{Truncate(title, 60)}'", $"Title updated to '{title}'.");
             }
             var titlePara = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = "Title" }),
                 new Run(new Text(title) { Space = SpaceProcessingModeValues.Preserve }));
             var first = body.Elements<Paragraph>().FirstOrDefault();
             if (first != null) body.InsertBefore(titlePara, first); else AppendBody(body, titlePara);
-            return Done($"WordTool.SetTitle: created title '{Truncate(title, 60)}'", $"Title set to '{title}'.");
+            return Done($"DocumentTool.SetTitle: created title '{Truncate(title, 60)}'", $"Title set to '{title}'.");
         });
 
         /// <summary>Returns all paragraphs as JSON with index, text, style, and type.
@@ -348,7 +348,7 @@ namespace AIOrchestrator.API
                 type = ParagraphType(p),
                 words = p.InnerText.Split((char[])[' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length
             }).ToList();
-            Log.LogStep($"WordTool.GetParagraphs: {result.Count} paragraphs");
+            Log.LogStep($"DocumentTool.GetParagraphs: {result.Count} paragraphs");
             return JsonSerializer.Serialize(result);
         });
 
@@ -370,7 +370,7 @@ namespace AIOrchestrator.API
                 case "delete":
                     var delText = Truncate(para!.InnerText, 40);
                     para.Remove();
-                    return Done($"WordTool.ParagraphOp: deleted index {index} ('{delText}')", $"Paragraph {index} deleted ('{delText}').");
+                    return Done($"DocumentTool.ParagraphOp: deleted index {index} ('{delText}')", $"Paragraph {index} deleted ('{delText}').");
 
                 case "copy":
                     var clone = (Paragraph)para!.CloneNode(true);
@@ -381,14 +381,14 @@ namespace AIOrchestrator.API
                     foreach (var be in clone.Descendants<BookmarkEnd>().ToList()) be.Remove();
                     var pos = Math.Min(index + 1, body.Elements<Paragraph>().Count());
                     InsertAt(body, clone, pos);
-                    return Done($"WordTool.ParagraphOp: copied index {index} to position {pos}", $"Paragraph {index} duplicated.");
+                    return Done($"DocumentTool.ParagraphOp: copied index {index} to position {pos}", $"Paragraph {index} duplicated.");
 
                 case "replace":
                     if (text == null) return "Error: 'text' is required for 'replace'.";
                     para!.RemoveAllChildren<Run>();
                     para.RemoveAllChildren<Hyperlink>();   // w:hyperlink is a paragraph child, not a Run
                     para.Append(new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
-                    return Done($"WordTool.ParagraphOp: replaced index {index}, text='{Truncate(text, 60)}'", $"Paragraph {index} replaced. ({text.Length} chars)");
+                    return Done($"DocumentTool.ParagraphOp: replaced index {index}, text='{Truncate(text, 60)}'", $"Paragraph {index} replaced. ({text.Length} chars)");
 
                 case "move":
                     if (toIndex == null) return "Error: 'toIndex' is required for 'move'.";
@@ -397,7 +397,7 @@ namespace AIOrchestrator.API
                         return $"Error: toIndex {toIndex} out of range. Document has {all.Count} paragraphs (0-{all.Count - 1}).";
                     para!.Remove();
                     InsertAt(body, para, Math.Min(toIndex.Value, body.Elements<Paragraph>().Count()));
-                    return Done($"WordTool.ParagraphOp: moved from {index} to {toIndex}", $"Paragraph moved from position {index} to {toIndex}.");
+                    return Done($"DocumentTool.ParagraphOp: moved from {index} to {toIndex}", $"Paragraph moved from position {index} to {toIndex}.");
 
                 case "delete_comment":
                     var refs = para!.Descendants<CommentReference>().Select(c => c.Id?.Value).Where(id => id != null).ToList();
@@ -410,7 +410,7 @@ namespace AIOrchestrator.API
                             commentsPart.Comments.Elements<Comment>().FirstOrDefault(c => c.Id?.Value == id)?.Remove();
                         commentsPart.Comments.Save();
                     }
-                    return Done($"WordTool.ParagraphOp: removed {refs.Count} comment(s) from paragraph {index}", $"Removed {refs.Count} comment(s) from paragraph {index}.");
+                    return Done($"DocumentTool.ParagraphOp: removed {refs.Count} comment(s) from paragraph {index}", $"Removed {refs.Count} comment(s) from paragraph {index}.");
 
                 case "delete_bookmark":
                     if (string.IsNullOrEmpty(text)) return "Error: 'text' (bookmark name) is required for 'delete_bookmark'.";
@@ -422,7 +422,7 @@ namespace AIOrchestrator.API
                         bs.Remove();
                         foreach (var be in para.Descendants<BookmarkEnd>().Where(e => e.Id?.Value == bid).ToList()) be.Remove();
                     }
-                    return Done($"WordTool.ParagraphOp: removed bookmark '{text}' from paragraph {index}", $"Bookmark '{text}' removed from paragraph {index}.");
+                    return Done($"DocumentTool.ParagraphOp: removed bookmark '{text}' from paragraph {index}", $"Bookmark '{text}' removed from paragraph {index}.");
 
                 default:
                     return $"Error: Unknown action '{action}'. Use 'delete', 'copy', 'move', 'replace', 'delete_comment', or 'delete_bookmark'.";
@@ -512,7 +512,7 @@ namespace AIOrchestrator.API
                         return $"Error: Invalid borderSide '{borderSide}'. Use: top, bottom, left, right, or all.";
                 }
             }
-            return Done($"WordTool.FormatParagraph: index {index}, style={style ?? "-"}, align={alignment ?? "-"}, font={fontName ?? "-"}, size={fontSize?.ToString() ?? "-"}, bold={bold}, italic={italic}, underline={underline}, color={colorHex ?? "-"}, spacing={lineSpacing ?? "-"}, shading={shading ?? "-"}, border={borderSide ?? "-"}", $"Paragraph {index} formatted.");
+            return Done($"DocumentTool.FormatParagraph: index {index}, style={style ?? "-"}, align={alignment ?? "-"}, font={fontName ?? "-"}, size={fontSize?.ToString() ?? "-"}, bold={bold}, italic={italic}, underline={underline}, color={colorHex ?? "-"}, spacing={lineSpacing ?? "-"}, shading={shading ?? "-"}, border={borderSide ?? "-"}", $"Paragraph {index} formatted.");
         });
 
         /// <summary>Adds a list (bulleted or numbered). Each string in items becomes one item.
@@ -539,7 +539,7 @@ namespace AIOrchestrator.API
                     new ParagraphProperties(new NumberingProperties(
                         new NumberingLevelReference { Val = 0 }, new NumberingId { Val = numId })),
                     new Run(new Text(item) { Space = SpaceProcessingModeValues.Preserve })), insertIdx++);
-            return Done($"WordTool.AddList: {items.Length} items ({(numbered ? "numbered" : "bulleted")}) at index {index?.ToString() ?? "end"}", $"{(numbered ? "Numbered" : "Bulleted")} list added: {items.Length} items.");
+            return Done($"DocumentTool.AddList: {items.Length} items ({(numbered ? "numbered" : "bulleted")}) at index {index?.ToString() ?? "end"}", $"{(numbered ? "Numbered" : "Bulleted")} list added: {items.Length} items.");
         });
 
         /// <summary>Adds a reference element to a paragraph: hyperlink, bookmark, or cross-reference to a bookmark.</summary>
@@ -568,21 +568,21 @@ namespace AIOrchestrator.API
                     para.RemoveAllChildren<Hyperlink>();   // replace an existing link: w:hyperlink is a paragraph child, not a Run
                     para.Append(new Hyperlink(LinkRun(text ?? target)) { Id = relId });
                     kind = "Hyperlink";
-                    Log.LogStep($"WordTool.AddLink: hyperlink at {paragraphIndex} → '{target}'");
+                    Log.LogStep($"DocumentTool.AddLink: hyperlink at {paragraphIndex} → '{target}'");
                     break;
                 case "cross_reference":
                     para!.RemoveAllChildren<Run>();
                     para.RemoveAllChildren<Hyperlink>();
                     para.Append(new Hyperlink(LinkRun(text ?? target)) { Anchor = target });
                     kind = "Cross-reference";
-                    Log.LogStep($"WordTool.AddLink: cross-reference at {paragraphIndex} → #{target}");
+                    Log.LogStep($"DocumentTool.AddLink: cross-reference at {paragraphIndex} → #{target}");
                     break;
                 case "bookmark":
                     var id = NewId();
                     para!.InsertBefore(new BookmarkStart { Name = target, Id = id }, para.GetFirstChild<Run>());
                     para.Append(new BookmarkEnd { Id = id });
                     kind = "Bookmark";
-                    Log.LogStep($"WordTool.AddLink: bookmark '{target}' at {paragraphIndex}");
+                    Log.LogStep($"DocumentTool.AddLink: bookmark '{target}' at {paragraphIndex}");
                     break;
                 default:
                     return $"Error: Unknown link type '{type}'. Use 'hyperlink', 'bookmark', or 'cross_reference'.";
@@ -660,7 +660,7 @@ namespace AIOrchestrator.API
                     if (right.HasValue) pm.SetAttribute(new OpenXmlAttribute("w", "right", WmlNs, ((int)(right.Value * 1440)).ToString()));
                 }
 
-            return Done($"WordTool.SetPage: size={pageSize ?? "-"}, orient={orientation ?? "-"}, margins=({top}, {bottom}, {left}, {right})", "Page settings updated.");
+            return Done($"DocumentTool.SetPage: size={pageSize ?? "-"}, orient={orientation ?? "-"}, margins=({top}, {bottom}, {left}, {right})", "Page settings updated.");
         });
 
         /// <summary>Returns the text content of a specific paragraph.</summary>
@@ -694,7 +694,7 @@ namespace AIOrchestrator.API
                     default:
                         return $"Error: Unknown property '{property}'. 'property' must be the NAME (Title, Author, Subject, or Keywords), with the value in the 'value' parameter — one per call. Example: set_document_property(property='Title', value='My Doc').";
                 }
-                return Done($"WordTool.SetDocumentProperty: {property} = '{value}'", $"Document property '{property}' set.");
+                return Done($"DocumentTool.SetDocumentProperty: {property} = '{value}'", $"Document property '{property}' set.");
             }
             catch (Exception ex)
             {
@@ -753,7 +753,7 @@ namespace AIOrchestrator.API
                     footerRef.Type = HeaderFooterValues.Default;
                     footerRef.Id = mainPart.GetIdOfPart(footerPart);
                     results.Add("page numbers");
-                    Log.LogStep("WordTool.SetHeaderFooter: page numbers added");
+                    Log.LogStep("DocumentTool.SetHeaderFooter: page numbers added");
                 }
                 else if (pageNumbers == false)
                 {
@@ -789,7 +789,7 @@ namespace AIOrchestrator.API
                         }
                     if (removed > 0) footerPart!.Footer!.Save();
                     results.Add(removed > 0 ? "page numbers removed" : "no page numbers present");
-                    Log.LogStep("WordTool.SetHeaderFooter: page numbers removed");
+                    Log.LogStep("DocumentTool.SetHeaderFooter: page numbers removed");
                 }
 
                 Persist();
@@ -846,7 +846,7 @@ namespace AIOrchestrator.API
               </wp:inline>
             </w:drawing>");
 
-            return Done($"WordTool.AddImage: '{resolved}' at index {index?.ToString() ?? "end"}", new Paragraph(new Run(drawing)), idx, $"Image inserted at paragraph position {index?.ToString() ?? "end"}.");
+            return Done($"DocumentTool.AddImage: '{resolved}' at index {index?.ToString() ?? "end"}", new Paragraph(new Run(drawing)), idx, $"Image inserted at paragraph position {index?.ToString() ?? "end"}.");
         });
 
         /// <summary>Adds a NATIVE editable chart (bar/line/pie) in its own paragraph. Flexible input
@@ -905,7 +905,7 @@ namespace AIOrchestrator.API
               </wp:inline>
             </w:drawing>");
 
-            return Done($"WordTool.AddChart: {type} chart, {values.Length} series, {cats.Length} categories at index {index?.ToString() ?? "end"}", new Paragraph(new Run(drawing)), idx, $"{type} chart added ({values.Length} series × {cats.Length} categories).");
+            return Done($"DocumentTool.AddChart: {type} chart, {values.Length} series, {cats.Length} categories at index {index?.ToString() ?? "end"}", new Paragraph(new Run(drawing)), idx, $"{type} chart added ({values.Length} series × {cats.Length} categories).");
         });
 
         /// <summary>Parses a list (categories or series names): JSON array, or comma-separated string.
@@ -1010,7 +1010,7 @@ namespace AIOrchestrator.API
                     preview = Truncate(x.text.Trim(), 80),
                     matchCount = (x.text.Length - x.text.Replace(searchText, "", StringComparison.OrdinalIgnoreCase).Length) / searchText.Length
                 }).ToList();
-            Log.LogStep($"WordTool.FindText: '{Truncate(searchText, 40)}' → {results.Count} paragraph(s)");
+            Log.LogStep($"DocumentTool.FindText: '{Truncate(searchText, 40)}' → {results.Count} paragraph(s)");
             return JsonSerializer.Serialize(results);
         });
 
@@ -1021,7 +1021,7 @@ namespace AIOrchestrator.API
         public string AddPageBreak(int? index = null) => Run("AddPageBreak", body =>
         {
             var err = InsertIndex(body, index, out var idx);
-            return err ?? Done($"WordTool.AddPageBreak: at index {index?.ToString() ?? "end"}", new Paragraph(new Run(new Break { Type = BreakValues.Page })), idx, $"Page break inserted at paragraph position {index?.ToString() ?? "end"}.");
+            return err ?? Done($"DocumentTool.AddPageBreak: at index {index?.ToString() ?? "end"}", new Paragraph(new Run(new Break { Type = BreakValues.Page })), idx, $"Page break inserted at paragraph position {index?.ToString() ?? "end"}.");
         });
 
         /// <summary>Edits an existing table: add/delete rows, add/delete columns, delete the whole table, or set a cell's text.</summary>
@@ -1046,7 +1046,7 @@ namespace AIOrchestrator.API
                     var tr = new TableRow();
                     foreach (var val in row) tr.Append(new TableCell(new Paragraph(new Run(new Text(val ?? "")))));
                     table!.Append(tr);
-                    return Done($"WordTool.TableEdit: row added to table {tableIndex}, {row.Length} cells", $"Row added to table {tableIndex} ({row.Length} cells).");
+                    return Done($"DocumentTool.TableEdit: row added to table {tableIndex}, {row.Length} cells", $"Row added to table {tableIndex} ({row.Length} cells).");
 
                 case "delete_row":
                     if (rowIndex == null) return "Error: 'rowIndex' is required for 'delete_row'.";
@@ -1055,7 +1055,7 @@ namespace AIOrchestrator.API
                     var delRow = GetRowAt(table!, tableIndex, rowIndex.Value, out err);
                     if (err != null) return err;
                     delRow!.Remove();
-                    return Done($"WordTool.TableEdit: row {rowIndex} deleted from table {tableIndex}", $"Row {rowIndex} deleted from table {tableIndex}.");
+                    return Done($"DocumentTool.TableEdit: row {rowIndex} deleted from table {tableIndex}", $"Row {rowIndex} deleted from table {tableIndex}.");
 
                 case "add_column":
                     var rowsA = table!.Elements<TableRow>().ToList();
@@ -1073,7 +1073,7 @@ namespace AIOrchestrator.API
                         if (colPos >= cells.Count) r.Append(newCell); else r.InsertBefore(newCell, cells[colPos]);
                         a++;
                     }
-                    return Done($"WordTool.TableEdit: column added to table {tableIndex} at {colPos} ({rowsA.Count} cells)", $"Column added to table {tableIndex} at position {colPos} ({rowsA.Count} cells).");
+                    return Done($"DocumentTool.TableEdit: column added to table {tableIndex} at {colPos} ({rowsA.Count} cells)", $"Column added to table {tableIndex} at position {colPos} ({rowsA.Count} cells).");
 
                 case "delete_column":
                     if (colIndex == null) return "Error: 'colIndex' is required for 'delete_column'.";
@@ -1087,11 +1087,11 @@ namespace AIOrchestrator.API
                         if (colIndex.Value < cells.Count) cells[colIndex.Value].Remove();
                     }
                     UpdateTableGrid(table, -1, colIndex.Value);
-                    return Done($"WordTool.TableEdit: column {colIndex} deleted from table {tableIndex}", $"Column {colIndex} deleted from table {tableIndex}.");
+                    return Done($"DocumentTool.TableEdit: column {colIndex} deleted from table {tableIndex}", $"Column {colIndex} deleted from table {tableIndex}.");
 
                 case "delete_table":
                     table!.Remove();
-                    return Done($"WordTool.TableEdit: table {tableIndex} deleted", $"Table {tableIndex} deleted.");
+                    return Done($"DocumentTool.TableEdit: table {tableIndex} deleted", $"Table {tableIndex} deleted.");
 
                 case "set_cell":
                     if (rowIndex == null || colIndex == null || text == null)
@@ -1102,7 +1102,7 @@ namespace AIOrchestrator.API
                     if (err != null) return err;
                     cell!.RemoveAllChildren<Paragraph>();
                     cell.Append(new Paragraph(new Run(new Text(text))));
-                    return Done($"WordTool.TableEdit: cell [{rowIndex},{colIndex}] in table {tableIndex} = '{Truncate(text, 40)}'", $"Cell [{rowIndex},{colIndex}] in table {tableIndex} set to '{text}'.");
+                    return Done($"DocumentTool.TableEdit: cell [{rowIndex},{colIndex}] in table {tableIndex} = '{Truncate(text, 40)}'", $"Cell [{rowIndex},{colIndex}] in table {tableIndex} set to '{text}'.");
 
                 default:
                     return $"Error: Unknown action '{action}'. Use 'add_row', 'delete_row', 'add_column', 'delete_column', 'delete_table', or 'set_cell'.";
@@ -1159,7 +1159,7 @@ namespace AIOrchestrator.API
             commentsPart.Comments.Save();
 
             para!.AppendChild(new Run()).AppendChild(new CommentReference { Id = wpId });
-            return Done($"WordTool.AddComment: paragraph {paragraphIndex}, '{Truncate(text, 60)}'", $"Comment added to paragraph {paragraphIndex}.");
+            return Done($"DocumentTool.AddComment: paragraph {paragraphIndex}, '{Truncate(text, 60)}'", $"Comment added to paragraph {paragraphIndex}.");
         });
 
         /// <summary>Generates a Table of Contents based on heading styles (Heading1-3).
@@ -1192,7 +1192,7 @@ namespace AIOrchestrator.API
                 new Run(new FieldChar { FieldCharType = FieldCharValues.End }));
             InsertAt(body, tocPara, Math.Max(insertIdx, 0));
 
-            return Done($"WordTool.AddTableOfContents: maxLevel={maxLevel}, title='{title ?? "(none)"}'", $"Table of contents added (headings 1-{maxLevel}). Update in Word to populate.");
+            return Done($"DocumentTool.AddTableOfContents: maxLevel={maxLevel}, title='{title ?? "(none)"}'", $"Table of contents added (headings 1-{maxLevel}). Update in Word to populate.");
         });
 
         /// <summary>Returns all available paragraph styles as a JSON array. Each entry has id and name.</summary>
@@ -1208,7 +1208,7 @@ namespace AIOrchestrator.API
                     .Where(s => s.Type == StyleValues.Paragraph)
                     .Select(s => new { id = s.StyleId?.Value ?? "", name = s.StyleName?.Val?.Value ?? s.StyleId?.Value ?? "" })
                     .ToList();
-                Log.LogStep($"WordTool.GetAvailableStyles: {result.Count} styles");
+                Log.LogStep($"DocumentTool.GetAvailableStyles: {result.Count} styles");
                 return JsonSerializer.Serialize(result);
             }
             catch (Exception ex)
@@ -1276,7 +1276,7 @@ namespace AIOrchestrator.API
                 _filePath = resolved;
                 _sessionBackedUp = backupName != null;   // pre-session state already backed up
 
-                Log.LogStep($"WordTool.CreateFromMarkdown: created '{resolved}' ({mdText.Length} chars md)");
+                Log.LogStep($"DocumentTool.CreateFromMarkdown: created '{resolved}' ({mdText.Length} chars md)");
                 return backupName != null
                     ? $"Created '{Path.GetFileName(resolved)}' from markdown. Existing file backed up as '{backupName}'."
                     : $"Created '{Path.GetFileName(resolved)}' from markdown.";
@@ -1303,7 +1303,7 @@ namespace AIOrchestrator.API
                 _document.Clone(stream);
                 stream.Position = 0;
                 var markdown = AllToMarkdown.Converter.ConvertDataToMarkdown(stream, AllToMarkdown.Converter.SupportedFileFormat.docx).TrimEnd();
-                Log.LogStep($"WordTool.ToMarkdown: converted '{_filePath}' → {markdown.Length} chars md");
+                Log.LogStep($"DocumentTool.ToMarkdown: converted '{_filePath}' → {markdown.Length} chars md");
                 return markdown;
             }
             catch (Exception ex)
@@ -1505,7 +1505,7 @@ namespace AIOrchestrator.API
                 var r = section.GetFirstChild<HeaderReference>() ?? section.AppendChild(new HeaderReference());
                 r.Type = HeaderFooterValues.Default;
                 r.Id = mainPart.GetIdOfPart(part);
-                Log.LogStep($"WordTool.SetHeaderFooter: header '{Truncate(text, 60)}'");
+                Log.LogStep($"DocumentTool.SetHeaderFooter: header '{Truncate(text, 60)}'");
                 return "header";
             }
             var fpart = mainPart.FooterParts?.FirstOrDefault() ?? mainPart.AddNewPart<FooterPart>();
@@ -1521,7 +1521,7 @@ namespace AIOrchestrator.API
             var fr = section.GetFirstChild<FooterReference>() ?? section.AppendChild(new FooterReference());
             fr.Type = HeaderFooterValues.Default;
             fr.Id = mainPart.GetIdOfPart(fpart);
-            Log.LogStep($"WordTool.SetHeaderFooter: footer '{Truncate(text, 60)}'");
+            Log.LogStep($"DocumentTool.SetHeaderFooter: footer '{Truncate(text, 60)}'");
             return "footer";
         }
 
@@ -1578,7 +1578,7 @@ namespace AIOrchestrator.API
                 foreach (var p in fs) mainPart.DeletePart(p);
             }
             var label = isHeader ? "header" : "footer";
-            Log.LogStep($"WordTool.SetHeaderFooter: {label} removed");
+            Log.LogStep($"DocumentTool.SetHeaderFooter: {label} removed");
             return removed > 0 || parts > 0 ? $"{label} removed" : $"no {label} present";
         }
 
@@ -1725,7 +1725,7 @@ namespace AIOrchestrator.API
             if (!_sessionBackedUp)
             {
                 _sessionBackedUp = true;
-                Log.LogStep($"WordTool.Persist: pre-session backup '{CreateBackup(_filePath) ?? "(none)"}'");
+                Log.LogStep($"DocumentTool.Persist: pre-session backup '{CreateBackup(_filePath) ?? "(none)"}'");
             }
             _document.MainDocumentPart?.Document?.Save();
             _document.Save();   // package-level save flushes the stream

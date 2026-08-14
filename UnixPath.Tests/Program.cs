@@ -5,7 +5,7 @@ namespace UnixPathTests;
 
 // ═══════════════════════════════════════════════════════════════════
 //  Unix path refactor — fast deterministic regression cycle.
-//  Covers: UnixPath helpers, WordTool.ResolveSandboxPath round-trips
+//  Covers: UnixPath helpers, DocumentTool.ResolveSandboxPath round-trips
 //  (OpenOrCreate/copyTo/CreateFromMarkdown/AddImage/ConvertToPdf/
 //  Restore/ToMarkdown), sandbox boundary (../, drive paths, sibling
 //  prefix), backward-compat relative names, result-message hygiene.
@@ -61,11 +61,11 @@ class Program
         Check("GetDirectory root file → empty", UnixPath.GetDirectory("file.docx") == "");
         Check("GetDirectory backslash input", UnixPath.GetDirectory(@"folder\sub\f.docx") == "folder/sub");
 
-        // ── B. WordTool Unix round-trips ──
-        Console.WriteLine("[B] WordTool Unix round-trips");
+        // ── B. DocumentTool Unix round-trips ──
+        Console.WriteLine("[B] DocumentTool Unix round-trips");
         string msg;
 
-        using (var w = new WordTool())   // one instance per file: a second instance cannot
+        using (var w = new DocumentTool())   // one instance per file: a second instance cannot
         {                                // reopen a file this one still holds (FileShare.Read)
             msg = w.OpenOrCreate("/sub/a.docx");
             Check("OpenOrCreate creates /sub/a.docx", msg.StartsWith("Created 'a.docx'.") && File.Exists(Path.Combine(root, "sub", "a.docx")), msg);
@@ -87,14 +87,14 @@ class Program
             w.AddParagraph("Copied edit");
         }
 
-        using (var w2 = new WordTool())
+        using (var w2 = new DocumentTool())
         {
             w2.OpenOrCreate("/sub/a.docx");
             var orig = w2.ToMarkdown();
             Check("original untouched by copyTo", orig.Contains("Hello Unix") && !orig.Contains("Copied edit"), orig);
         }
 
-        using (var w3 = new WordTool())
+        using (var w3 = new DocumentTool())
         {
             msg = w3.OpenOrCreate("/sub/a_v2.docx");
             Check("copy opens and contains its own edit", msg.StartsWith("Opened 'a_v2.docx'") && w3.ToMarkdown().Contains("Copied edit"), msg);
@@ -136,7 +136,7 @@ class Program
 
         // ── C. Sandbox boundary ──
         Console.WriteLine("[C] Sandbox boundary");
-        using (var w = new WordTool())
+        using (var w = new DocumentTool())
         {
             w.OpenOrCreate("/sub/a.docx");   // AddImage needs an open document
             msg = w.AddImage("/../evil.png");
@@ -174,7 +174,7 @@ class Program
 
         // ── D. Result-message hygiene (no native path / backslashes leak) ──
         Console.WriteLine("[D] Result-message hygiene");
-        using (var w = new WordTool())
+        using (var w = new DocumentTool())
         {
             var results = new[]
             {

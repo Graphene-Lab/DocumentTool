@@ -1,11 +1,11 @@
-﻿using AIOrchestrator;
+using AIOrchestrator;
 using AIOrchestrator.API;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
-namespace WordToolTests {
+namespace DocumentToolTests {
     // ═══════════════════════════════════════════════════════════════
-    //  WordTool — Realistic Document Tests with Quality Analysis
+    //  DocumentTool — Realistic Document Tests with Quality Analysis
     //  Cycle 2: adds HARD scenarios targeting previously-uncovered
     //  methods (charts, images, restore, find/replace, paragraph
     //  surgery, full table editing, global fonts, mega-document).
@@ -13,7 +13,7 @@ namespace WordToolTests {
     class Program {
         static int ok = 0, fail = 0, total = 0;
         static string testDir = "";
-        static readonly string ResultsFile = Path.Combine(Path.GetTempPath(), "wordtool_test_results.txt");
+        static readonly string ResultsFile = Path.Combine(Path.GetTempPath(), "documenttool_test_results.txt");
 
         static void WriteResult(string line) => File.AppendAllText(ResultsFile, line + Environment.NewLine);
 
@@ -33,7 +33,7 @@ namespace WordToolTests {
             File.WriteAllBytes(Path.Combine(testDir, "logo.png"), Convert.FromBase64String(
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="));
 
-            Console.WriteLine($"Hard WordTool tests (DeepseekBridge) | Temp: {testDir}\n");
+            Console.WriteLine($"Hard DocumentTool tests (DeepseekBridge) | Temp: {testDir}\n");
             WriteResult("STARTED");
 
             // ── Cycle 1 regression: original suite ──
@@ -204,7 +204,7 @@ namespace WordToolTests {
                 checkTables: true, checkFontName: true);
 
             RunTest(11, "Enterprise mega-document",
-                "Create 'Annual_Business_Plan_2026.docx' — a complete business plan exercising every WordTool feature. Complete ALL tasks IN ORDER:\n" +
+                "Create 'Annual_Business_Plan_2026.docx' — a complete business plan exercising every DocumentTool feature. Complete ALL tasks IN ORDER:\n" +
                 "TASK 1: Create from markdown:\n" +
                 "# Annual Business Plan 2026\n\n## Executive Summary\n\nThe plan targets $12M ARR by year end through product-led growth.\n\n## Market Analysis\n\n|Segment|Size|Growth|\n|---|---|---|\n|SMB|$4B|+18%|\n|Mid-Market|$6B|+12%|\n|Enterprise|$10B|+9%|\n\n## Strategy\n\n- Expand self-serve onboarding\n- Launch enterprise tier in Q2\n- Double the partner program\n\n## Financial Plan\n\n|KPI|2025|2026 Target|\n|---|---|---|\n|ARR|$8M|$12M|\n|Gross Margin|70%|74%|\n\n## Risks\n\nCompetitive pressure and hiring constraints.\n" +
                 "TASK 2: Apply 'Title' style to the main title.\n" +
@@ -249,7 +249,7 @@ namespace WordToolTests {
                     { final = e; done.Set(); }
                 };
 
-                var task = Task.Run(() => orch.ExecuteAction(prompt, new[] { typeof(WordTool) }, maxIterations: maxIterations));
+                var task = Task.Run(() => orch.ExecuteAction(prompt, new[] { typeof(DocumentTool) }, maxIterations: maxIterations));
                 done.Wait(TimeSpan.FromSeconds(30));
                 var agentResult = task.GetAwaiter().GetResult();
 
@@ -330,7 +330,7 @@ namespace WordToolTests {
             else if (hasCoreProps) { r.Points += 3; r.Details.Add("core properties set (header/footer missing)"); }
             else r.Details.Add("no header/footer parts and no core properties found");
 
-            using var w = new WordTool();
+            using var w = new DocumentTool();
             var open = w.OpenOrCreate(fileName);
             r.Max += 10;
             if (!open.StartsWith("Error")) { r.Points += 10; r.Details.Add("document opens correctly (valid DOCX)"); }
