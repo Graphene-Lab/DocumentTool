@@ -249,7 +249,7 @@ namespace DocumentToolTests {
                     { final = e; done.Set(); }
                 };
 
-                var task = Task.Run(() => orch.ExecuteAction(prompt, new[] { typeof(DocumentTool) }, maxIterations: maxIterations));
+                var task = Task.Run(() => orch.ExecuteAction(prompt, new[] { "DocumentTool" }, maxIterations: maxIterations));
                 done.Wait(TimeSpan.FromSeconds(30));
                 var agentResult = task.GetAwaiter().GetResult();
 

@@ -467,7 +467,7 @@ namespace CreateDocumentAgentTests
 
                 var prompt = "Crea un documento PDF completo e ben strutturato. Usa create_document_from_context passando il file allegato (vedi l'avviso sugli allegati disponibili in locale), con destinationFolder '/report_output', documentType 'report', subject 'Procedura di onboarding'. Attendi l'esito.";
                 var result1 = orch.ExecuteAction(prompt,
-                    new[] { typeof(FileTool), typeof(DocumentTool) },
+                    new[] { "FileTool", "DocumentTool" },
                     attachments: new[] { new FileAttachment("procedura_onboarding.md", attachContent) },
                     maxIterations: 40);
                 var inProgress = result1.Message ?? "";
@@ -490,7 +490,7 @@ namespace CreateDocumentAgentTests
                 if (!finished) return;
 
                 // Run 2: the drain delivers the completion as an initiative turn before the user prompt.
-                var result2 = orch.ExecuteAction("ok", new[] { typeof(FileTool), typeof(DocumentTool) }, maxIterations: 20);
+                var result2 = orch.ExecuteAction("ok", new[] { "FileTool", "DocumentTool" }, maxIterations: 20);
                 var outDir = Path.Combine(sandbox, "report_output");
                 var pdf = Directory.Exists(outDir) ? Directory.GetFiles(outDir, "*.pdf").FirstOrDefault() : null;
                 var info = pdf != null ? Path.ChangeExtension(pdf, ".info") : null;
@@ -548,7 +548,7 @@ namespace CreateDocumentAgentTests
 
                 var prompt = "Crea un documento PDF completo e ben strutturato. Usa create_document_from_context passando il file allegato (vedi l'avviso), destinationFolder '/report_sync', documentType 'report', subject 'Progetto Aquila'. Attendi l'esito.";
                 var result = orch.ExecuteAction(prompt,
-                    new[] { typeof(FileTool), typeof(DocumentTool) },
+                    new[] { "FileTool", "DocumentTool" },
                     attachments: new[] { new FileAttachment("progetto_aquila.md", attachContent) },
                     maxIterations: 40);
                 var outDir = Path.Combine(sandbox, "report_sync");
