@@ -12,11 +12,11 @@ namespace AIOrchestrator.API
     /// <summary>
     /// Word document (DOCX) operations for agent use: open/create, paragraphs, tables, headers/footers, charts, images.
     /// </summary>
-    public class WordTool : IDisposable, IAgentTool, IFileTool
+    public class WordTool : BaseAgentTool, IDisposable, IFileTool
     {
         /// <summary>This tool can start long-running background document generations whose completion is
         /// delivered back to the conversation as a standard completion event (see AGENT_TOOLS_GUIDE.md).</summary>
-        public bool SupportsAsyncTasks => true;
+        public override bool SupportsAsyncTasks => true;
 
         /// <summary>Throwaway registry used when the tool is called OUTSIDE an orchestrator (AgentTaskRegistry.Current
         /// is null, e.g. in tests): assigned here so the caller can wait on the completion. In production the
