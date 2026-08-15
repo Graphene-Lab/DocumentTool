@@ -19,7 +19,7 @@ reflection pipeline.
 - **Host with static reference**: `ProjectReference` the project (or
   `PackageReference Graphene.DocumentTool`) and register
   `typeof(AIOrchestrator.API.DocumentTool)` in the agent types array passed to
-  `AgentOrchestrator.ExecuteAction`.
+  `AgentHarness.ExecuteAction`.
 
 ## Build
 
