@@ -100,10 +100,15 @@ namespace AIOrchestrator.API
             }
         }
 
-        /// <summary>Restores the document to its state before this session (the automatic
-        /// pre-session backup). The backup file is preserved for future restores.</summary>
-        /// <returns>Descriptive result message.</returns>
-        public string Restore()
+        /// <summary>Restores the document to a previously backed-up version: the current file is first
+        /// saved as a new numbered backup (the restore itself is reversible), then the chosen backup
+        /// replaces it. The backup file name is derived from the current document (e.g. "report.001.bak"
+        /// → "report.docx").</summary>
+        /// <param name="backupFile">Optional backup file name (e.g. "report.001.bak" or
+        /// "/documents/report.001.bak"); must belong to the current document. When omitted, the most
+        /// recent backup of the current document is used.</param>
+        /// <returns>Descriptive result message with the backup used and the new backup created.</returns>
+        public string Restore(string? backupFile = null)
         {
             if (string.IsNullOrEmpty(_filePath)) return "No file path. Open a document first.";
 
@@ -111,28 +116,44 @@ namespace AIOrchestrator.API
             {
                 var dir = Path.GetDirectoryName(_filePath) ?? ".";
                 var name = Path.GetFileNameWithoutExtension(_filePath);
-                // Only backups of THIS exact file ("name.NNN.bak"): the naive "name.*.bak" glob also matches
-                // similarly-named files (report.final.001.bak for report.docx) → wrong restore.
-                // The glob can also match odd names (e.g. "name..bak") — guard the substring.
-                var backups = new List<string>();
-                foreach (var f in Directory.GetFiles(dir, $"{name}.*.bak"))
+
+                string latest;
+                if (string.IsNullOrWhiteSpace(backupFile))
                 {
-                    var suffix = Path.GetFileNameWithoutExtension(f);
-                    if (suffix.Length > name.Length && suffix[(name.Length + 1)..].All(char.IsDigit))
-                        backups.Add(f);
+                    // Only backups of THIS exact file ("name.NNN.bak"): the naive "name.*.bak" glob also matches
+                    // similarly-named files (report.final.001.bak for report.docx) → wrong restore.
+                    // The glob can also match odd names (e.g. "name..bak") — guard the substring.
+                    var backups = new List<string>();
+                    foreach (var f in Directory.GetFiles(dir, $"{name}.*.bak"))
+                    {
+                        var suffix = Path.GetFileNameWithoutExtension(f);
+                        if (suffix.Length > name.Length && suffix[(name.Length + 1)..].All(char.IsDigit))
+                            backups.Add(f);
+                    }
+                    backups.Sort(StringComparer.Ordinal);
+                    backups.Reverse();
+
+                    if (backups.Count == 0) return "No backup found. The document was never edited after opening.";
+                    latest = backups[0];
                 }
-                backups.Sort(StringComparer.Ordinal);
-                backups.Reverse();
+                else
+                {
+                    latest = Path.Combine(dir, Path.GetFileName(backupFile.Replace('/', Path.DirectorySeparatorChar)));
+                    if (!File.Exists(latest)) return $"Error: backup file '{backupFile}' not found.";
+                    var suffix = Path.GetFileNameWithoutExtension(latest);
+                    if (suffix.Length <= name.Length || !suffix[(name.Length + 1)..].All(char.IsDigit))
+                        return $"Error: backup '{backupFile}' does not belong to the current document '{Path.GetFileName(_filePath)}'.";
+                }
 
-                if (backups.Count == 0) return "No backup found. The document was never edited after opening.";
-
-                var latest = backups[0];
                 var backupName = Path.GetFileName(latest);
-                CloseDocument(saveFirst: false);
+                CloseDocument(saveFirst: true);            // flush current state so the swap captures it
+                var swapName = CreateBackup(_filePath);    // swap: the current version becomes a backup itself
                 File.Copy(latest, _filePath, overwrite: true);
                 _document = OpenEditable(_filePath);
-                Log.LogStep($"DocumentTool.Restore: restored from '{backupName}'");
-                return $"Restored from backup '{backupName}'. Backup preserved.";
+                Log.LogStep($"DocumentTool.Restore: restored from '{backupName}' swap='{swapName ?? "(none)"}'");
+                return swapName == null
+                    ? $"Restored from backup '{backupName}'. Backup preserved."
+                    : $"Restored from backup '{backupName}'. Previous version backed up as '{swapName}'.";
             }
             catch (Exception ex)
             {
