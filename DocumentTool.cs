@@ -26,7 +26,6 @@ namespace AIOrchestrator.API
         private WordprocessingDocument? _document;
         private FileStream? _fileStream;   // owned separately: Open(stream) does NOT dispose the stream
         private string _filePath = string.Empty;
-        private bool _sessionBackedUp;     // pre-session backup created once, on the first edit
         private bool _fileCreatedThisSession;   // OpenOrCreate created an EMPTY placeholder this session
 
         private static readonly Random _idRandom = new();
@@ -59,7 +58,6 @@ namespace AIOrchestrator.API
         {
             CloseDocument(saveFirst: false);
             _filePath = string.Empty;
-            _sessionBackedUp = false;
             _fileCreatedThisSession = false;
             try
             {
@@ -69,10 +67,10 @@ namespace AIOrchestrator.API
                     var copy = SandboxPath.Resolve(copyTo);
                     if (!File.Exists(resolved))
                         return $"Error: '{filePath}' not found. copyTo works on an existing file; use OpenOrCreate(path) without copyTo to create a new one.";
-                    if (File.Exists(copy)) CreateBackup(copy);
                     File.Copy(resolved, copy, overwrite: true);
                     _document = OpenEditable(copy);
                     _filePath = copy;
+                    GitSupport.Snapshot(copy, "DocumentTool copy");
                     Log.LogStep($"DocumentTool.OpenOrCreate: opened copy of '{filePath}' at '{copy}'");
                     return $"Opened '{Path.GetFileName(resolved)}' as a copy at '{Path.GetFileName(copy)}'. Original untouched.";
                 }
@@ -100,71 +98,33 @@ namespace AIOrchestrator.API
             }
         }
 
-        /// <summary>Restores the document to a previously backed-up version: the current file is first
-        /// saved as a new numbered backup (the restore itself is reversible), then the chosen backup
-        /// replaces it. The backup file name is derived from the current document (e.g. "report.001.bak"
-        /// → "report.docx").</summary>
-        /// <param name="backupFile">Optional backup file name (e.g. "report.001.bak" or
-        /// "/documents/report.001.bak"); must belong to the current document. When omitted, the most
-        /// recent backup of the current document is used.</param>
-        /// <returns>Descriptive result message with the backup used and the new backup created.</returns>
-        public string Restore(string? backupFile = null)
-        {
-            if (string.IsNullOrEmpty(_filePath)) return "No file path. Open a document first.";
-
-            try
-            {
-                var dir = Path.GetDirectoryName(_filePath) ?? ".";
-                var name = Path.GetFileNameWithoutExtension(_filePath);
-
-                string latest;
-                if (string.IsNullOrWhiteSpace(backupFile))
-                {
-                    // Only backups of THIS exact file ("name.NNN.bak"): the naive "name.*.bak" glob also matches
-                    // similarly-named files (report.final.001.bak for report.docx) → wrong restore.
-                    // The glob can also match odd names (e.g. "name..bak") — guard the substring.
-                    var backups = new List<string>();
-                    foreach (var f in Directory.GetFiles(dir, $"{name}.*.bak"))
-                    {
-                        var suffix = Path.GetFileNameWithoutExtension(f);
-                        if (suffix.Length > name.Length && suffix[(name.Length + 1)..].All(char.IsDigit))
-                            backups.Add(f);
-                    }
-                    backups.Sort(StringComparer.Ordinal);
-                    backups.Reverse();
-
-                    if (backups.Count == 0) return "No backup found. The document was never edited after opening.";
-                    latest = backups[0];
-                }
-                else
-                {
-                    latest = Path.Combine(dir, Path.GetFileName(backupFile.Replace('/', Path.DirectorySeparatorChar)));
-                    if (!File.Exists(latest)) return $"Error: backup file '{backupFile}' not found.";
-                    var suffix = Path.GetFileNameWithoutExtension(latest);
-                    if (suffix.Length <= name.Length || !suffix[(name.Length + 1)..].All(char.IsDigit))
-                        return $"Error: backup '{backupFile}' does not belong to the current document '{Path.GetFileName(_filePath)}'.";
-                }
-
-                var backupName = Path.GetFileName(latest);
-                CloseDocument(saveFirst: true);            // flush current state so the swap captures it
-                var swapName = CreateBackup(_filePath);    // swap: the current version becomes a backup itself
-                File.Copy(latest, _filePath, overwrite: true);
-                _document = OpenEditable(_filePath);
-                Log.LogStep($"DocumentTool.Restore: restored from '{backupName}' swap='{swapName ?? "(none)"}'");
-                return swapName == null
-                    ? $"Restored from backup '{backupName}'. Backup preserved."
-                    : $"Restored from backup '{backupName}'. Previous version backed up as '{swapName}'.";
-            }
-            catch (Exception ex)
-            {
-                return $"Error: Restore failed. {ex.Message}";
-            }
-        }
-
         /// <summary>Releases the underlying document resources. Called automatically by the orchestrator.
         /// Explicitly saves pending in-memory changes before closing — the OpenXml package's
         /// dispose-autosave can corrupt the file when a stream-backed document is closed.</summary>
         void IDisposable.Dispose() => CloseDocument(saveFirst: true);
+
+        /// <summary>Reverts the OPEN document to a version from the workspace git repo (list them with
+        /// GitTool.history). The current state is saved as a new version first (the rollback is
+        /// reversible), then the file is overwritten and the document is reopened. Use this when the
+        /// document is open in this tool; GitTool.restore handles files that are not open.</summary>
+        /// <param name="versionId">Version to restore, from GitTool.history().</param>
+        /// <returns>Descriptive result message.</returns>
+        public string Restore(string versionId)
+        {
+            if (_document == null || string.IsNullOrEmpty(_filePath)) return "Error: No document open. Open it first.";
+            try
+            {
+                CloseDocument(saveFirst: true);   // release the open handle so the file can be overwritten
+                var message = GitSupport.Restore(versionId, _filePath);
+                _document = OpenEditable(_filePath);
+                return message;
+            }
+            catch (Exception ex)
+            {
+                try { if (_document == null) _document = OpenEditable(_filePath); } catch { }
+                return $"Error: Restore failed. {ex.Message}";
+            }
+        }
 
         /// <summary>Closes the current document, disposing the package AND its backing stream.</summary>
         private void CloseDocument(bool saveFirst)
@@ -1251,7 +1211,6 @@ namespace AIOrchestrator.API
         {
             CloseDocument(saveFirst: false);   // release any open handle before overwriting the file
             _filePath = string.Empty;
-            _sessionBackedUp = false;
             try
             {
                 var resolved = SandboxPath.Resolve(filePath);
@@ -1265,17 +1224,6 @@ namespace AIOrchestrator.API
                 }
                 else return "Error: Provide either 'markdown' (content) or 'markdownFile' (path).";
 
-                var backupName = File.Exists(resolved) ? CreateBackup(resolved) : null;
-
-                if (_fileCreatedThisSession && backupName != null)
-                {
-                    // OpenOrCreate created an EMPTY placeholder moments ago in this session: backing
-                    // it up would freeze a blank file as the "pre-session" state, so Restore would
-                    // wipe the content we are about to write. Drop the stray backup and let the first
-                    // real edit back up the freshly-written content instead.
-                    try { File.Delete(Path.Combine(Path.GetDirectoryName(resolved) ?? ".", backupName)); } catch { }
-                    backupName = null;
-                }
                 _fileCreatedThisSession = false;
 
                 var converter = new MarkdownConverter();
@@ -1295,11 +1243,11 @@ namespace AIOrchestrator.API
 
                 _document = OpenEditable(resolved);
                 _filePath = resolved;
-                _sessionBackedUp = backupName != null;   // pre-session state already backed up
+                var versionId = GitSupport.Snapshot(resolved, "DocumentTool create from markdown");
 
-                Log.LogStep($"DocumentTool.CreateFromMarkdown: created '{resolved}' ({mdText.Length} chars md)");
-                return backupName != null
-                    ? $"Created '{Path.GetFileName(resolved)}' from markdown. Existing file backed up as '{backupName}'."
+                Log.LogStep($"DocumentTool.CreateFromMarkdown: created '{resolved}' ({mdText.Length} chars md) version='{versionId}'");
+                return versionId != null
+                    ? $"Created '{Path.GetFileName(resolved)}' from markdown. New version: {versionId}. (Rollback via GitTool.restore.)"
                     : $"Created '{Path.GetFileName(resolved)}' from markdown.";
             }
             catch (Exception ex)
@@ -1738,22 +1686,18 @@ namespace AIOrchestrator.API
             else if (position < cols.Count) cols[position].Remove();
         }
 
-        /// <summary>Persists pending in-memory changes to disk. The first persist of a session backs
-        /// up the pre-session file so Restore can revert to it.</summary>
+        /// <summary>Persists pending in-memory changes to disk and versions the new content
+        /// (rollback is centralized in GitTool.restore).</summary>
         private void Persist()
         {
             if (_document == null || string.IsNullOrEmpty(_filePath)) return;
-            if (!_sessionBackedUp)
-            {
-                _sessionBackedUp = true;
-                Log.LogStep($"DocumentTool.Persist: pre-session backup '{CreateBackup(_filePath) ?? "(none)"}'");
-            }
             _document.MainDocumentPart?.Document?.Save();
             _document.Save();   // package-level save flushes the stream
+            GitSupport.Snapshot(_filePath, "DocumentTool save");
         }
 
         /// <summary>Opens the document for editing with FileShare.Read so concurrent readers
-        /// (CreateBackup, ToMarkdown) can access the file while open. The stream is owned separately
+        /// (ToMarkdown) can access the file while open. The stream is owned separately
         /// because WordprocessingDocument.Open(stream) does NOT dispose it.</summary>
         private WordprocessingDocument OpenEditable(string path)
         {
@@ -1942,25 +1886,6 @@ namespace AIOrchestrator.API
                 default:
                     return $"Error: unexpected failure ({result}). Check the log and retry.";
             }
-        }
-
-        private static string? CreateBackup(string filePath)
-        {
-            if (!File.Exists(filePath)) return null;
-            var dir = Path.GetDirectoryName(filePath) ?? ".";
-            var name = Path.GetFileNameWithoutExtension(filePath);
-            for (int i = 1; i <= 9999; i++)
-            {
-                var backup = $"{name}.{i:D3}.bak";
-                if (!File.Exists(Path.Combine(dir, backup)))
-                {
-                    File.Copy(filePath, Path.Combine(dir, backup));
-                    return backup;
-                }
-            }
-            var fallback = $"{name}.{DateTime.Now:yyyyMMddHHmmss}.bak";
-            File.Copy(filePath, Path.Combine(dir, fallback));
-            return fallback;
         }
 
         private static string Truncate(string value, int maxLen)

@@ -99,12 +99,13 @@ class Program
             msg = w3.OpenOrCreate("/sub/a_v2.docx");
             Check("copy opens and contains its own edit", msg.StartsWith("Opened 'a_v2.docx'") && w3.ToMarkdown().Contains("Copied edit"), msg);
 
-            // Restore: fresh session on the original, edit, then revert.
+            // Rollback: the tool restores the OPEN document (closes its handle, GitSupport.Restore, reopens).
             w3.OpenOrCreate("/sub/a.docx");
             w3.AddParagraph("To be reverted");
             Check("pre-restore edit persisted", w3.ToMarkdown().Contains("To be reverted"));
-            msg = w3.Restore();
-            Check("Restore succeeds", msg.StartsWith("Restored from backup"), msg);
+            var history = AIOrchestrator.GitSupport.History(AIOrchestrator.SandboxPath.Resolve("/sub/a.docx"));
+            var restored = w3.Restore(history[^1].VersionId);   // oldest version
+            Check("Restore succeeds", restored.StartsWith("Restored"), restored);
             var reverted = w3.ToMarkdown();
             Check("Restore reverts edit", reverted.Contains("Hello Unix") && !reverted.Contains("To be reverted"), reverted);
 
@@ -232,7 +233,7 @@ class Program
         }
 
         Console.WriteLine($"\n═══ {_ok} passed, {_fail} failed ═══");
-        try { Directory.Delete(testDir, recursive: true); } catch { }
+        try { AIOrchestrator.GitSupport.DeleteWorkspace(testDir); } catch { }
         Environment.ExitCode = _fail == 0 ? 0 : 1;
     }
 }
