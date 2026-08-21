@@ -458,9 +458,9 @@ namespace CreateDocumentAgentTests
         {
             try
             {
-                var orch = new AgentOrchestrator("DeepSeekBridge") { AsyncTaskDeliveryEnabled = true };
+                var orch = new AgentHarness("DeepSeekBridge") { AsyncTaskDeliveryEnabled = true };
                 string? initiative = null;
-                orch.AgentProgress += (_, e) => { if (e.State == AgentOrchestrator.AgentState.Initiative) initiative = e.Message; };
+                orch.AgentProgress += (_, e) => { if (e.State == AgentHarness.AgentState.Initiative) initiative = e.Message; };
 
                 var attachContent = Encoding.UTF8.GetBytes(
                     "# Procedura di onboarding\n\n## Finalità\n\nDescrivere i passaggi per l'inserimento di un nuovo dipendente.\n\n## Passi\n\n1. Contratto firmato dal candidato.\n2. Creazione account aziendali e badge.\n3. Formazione obbligatoria (sicurezza + privacy).\n4. Assegnazione del mentor.\n5. Revisione a 30 giorni con il manager.\n\n## Responsabilità\n\n- HR: passi 1-2.\n- IT: passo 2.\n- Manager: passi 4-5.\n");
@@ -511,7 +511,7 @@ namespace CreateDocumentAgentTests
         {
             try
             {
-                var orch = new AgentOrchestrator("DeepSeekBridge"); // AsyncTaskDeliveryEnabled = false (default)
+                var orch = new AgentHarness("DeepSeekBridge"); // AsyncTaskDeliveryEnabled = false (default)
                 var attachContent = Encoding.UTF8.GetBytes(
                     "# Progetto Aquila — Documento di progetto\n\n" +
                     "## 1. Contesto e motivazione\n\n" +
@@ -569,7 +569,7 @@ namespace CreateDocumentAgentTests
         static long? ParseTaskId(string text)
         {
             // The canonical marker is the tool result's "task id N" (lowercase, parsed exactly by
-            // AgentOrchestrator.AgentTaskRegistry.TryParseTaskId on the tool RESULT — never paraphrased).
+            // AgentTaskRegistry.TryParseTaskId on the tool RESULT — never paraphrased).
             // Here we parse the AGENT'S natural-language message to the user, which may paraphrase
             // ("task ID 4", "Task ID 4", ...), so a case-insensitive regex is required.
             var m = Regex.Match(text, @"task\s+id\s+(\d+)", RegexOptions.IgnoreCase);

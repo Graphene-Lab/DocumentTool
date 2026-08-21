@@ -239,13 +239,13 @@ namespace DocumentToolTests {
 
             try {
                 Log.LogStep($"=== Test {num}: {name} ===");
-                var orch = new AIOrchestrator.AgentOrchestrator("DeepSeekBridge");
+                var orch = new AIOrchestrator.AgentHarness("DeepSeekBridge");
 
                 using var done = new ManualResetEventSlim();
-                AIOrchestrator.AgentOrchestrator.AgentProgressEventArgs? final = null;
+                AIOrchestrator.AgentHarness.AgentProgressEventArgs? final = null;
                 orch.AgentProgress += (_, e) => {
-                    if (e.State is AIOrchestrator.AgentOrchestrator.AgentState.Completed
-                        or AIOrchestrator.AgentOrchestrator.AgentState.Failed)
+                    if (e.State is AIOrchestrator.AgentHarness.AgentState.Completed
+                        or AIOrchestrator.AgentHarness.AgentState.Failed)
                     { final = e; done.Set(); }
                 };
 
