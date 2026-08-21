@@ -14,9 +14,7 @@
     <Papyrine_SponsorshipLicenseIgnored>true</Papyrine_SponsorshipLicenseIgnored>
     <Configurations>Debug;Release;Test</Configurations>
     <PackageId>Graphene.DocumentTool</PackageId>
-    <IsPrerelease>true</IsPrerelease>
-    <Version Condition="'$(IsPrerelease)' == 'true'">$([System.DateTime]::Now.ToString("1.yy.MM.dd"))-prerelease</Version>
-    <Version Condition="'$(IsPrerelease)' != 'true'">$([System.DateTime]::Now.ToString("1.yy.MM.dd"))</Version>
+    <Version>$([System.DateTime]::Now.ToString("1.yy.MM.dd"))</Version>
     <Description>Document (DOCX) agent tool for AIOrchestrator: open/create, paragraphs, tables, headers/footers, charts, images.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
