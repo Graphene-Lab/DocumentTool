@@ -72,7 +72,7 @@ namespace AIOrchestrator.API
                     _filePath = copy;
                     GitSupport.Snapshot(copy, "DocumentTool copy");
                     Log.LogStep($"DocumentTool.OpenOrCreate: opened copy of '{filePath}' at '{copy}'");
-                    return $"Opened '{Path.GetFileName(resolved)}' as a copy at '{Path.GetFileName(copy)}'. Original untouched.";
+                    return $"Opened '{SandboxPath.ToAgent(resolved)}' as a copy at '{SandboxPath.ToAgent(copy)}'. Original untouched.";
                 }
 
                 bool created = false;
@@ -90,7 +90,7 @@ namespace AIOrchestrator.API
                 _filePath = resolved;
                 _fileCreatedThisSession = created;
                 Log.LogStep($"DocumentTool.OpenOrCreate: {(created ? "created" : "opened")} '{resolved}'");
-                return created ? $"Created '{Path.GetFileName(resolved)}'." : $"Opened '{Path.GetFileName(resolved)}'.";
+                return created ? $"Created '{SandboxPath.ToAgent(resolved)}'." : $"Opened '{SandboxPath.ToAgent(resolved)}'.";
             }
             catch (Exception ex)
             {
@@ -1246,9 +1246,10 @@ namespace AIOrchestrator.API
                 var versionId = GitSupport.Snapshot(resolved, "DocumentTool create from markdown");
 
                 Log.LogStep($"DocumentTool.CreateFromMarkdown: created '{resolved}' ({mdText.Length} chars md) version='{versionId}'");
+                var agentPath = SandboxPath.ToAgent(resolved);
                 return versionId != null
-                    ? $"Created '{Path.GetFileName(resolved)}' from markdown. New version: {versionId}. (Rollback via GitTool.restore.)"
-                    : $"Created '{Path.GetFileName(resolved)}' from markdown.";
+                    ? $"Created '{agentPath}' from markdown. New version: {versionId}. (Rollback via GitTool.restore.)"
+                    : $"Created '{agentPath}' from markdown.";
             }
             catch (Exception ex)
             {
