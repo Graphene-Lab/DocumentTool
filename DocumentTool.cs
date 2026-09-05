@@ -66,7 +66,7 @@ namespace AIOrchestrator.API
                 {
                     var copy = SandboxPath.Resolve(copyTo);
                     if (!File.Exists(resolved))
-                        return $"Error: '{filePath}' not found. copyTo works on an existing file; use OpenOrCreate(path) without copyTo to create a new one.";
+                        return $"Error: '{filePath}' not found. copyTo works on an existing file; use {AIOrchestrator.Utility.ToSnakeCase(nameof(OpenOrCreate))}(path) without copyTo to create a new one.";
                     File.Copy(resolved, copy, overwrite: true);
                     _document = OpenEditable(copy);
                     _filePath = copy;
@@ -1108,7 +1108,7 @@ namespace AIOrchestrator.API
                 else if (_document == null) return "Error: No document open.";
                 else if (string.IsNullOrEmpty(_filePath)) return "Error: No file path. Open a document first.";
 
-                return "Error: ConvertToPdf requires a real PDF engine (Microsoft Word or LibreOffice). " +
+                return $"Error: {AIOrchestrator.Utility.ToSnakeCase(nameof(ConvertToPdf))} requires a real PDF engine (Microsoft Word or LibreOffice). " +
                        "The previous placeholder copied DOCX bytes into a .pdf file, which is not a valid PDF.";
             }
             catch (Exception ex)
