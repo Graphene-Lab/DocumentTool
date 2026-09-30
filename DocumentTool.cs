@@ -10,7 +10,10 @@ using DocSharp.Markdown;
 namespace AIOrchestrator.API
 {
     /// <summary>
-    /// Document (DOCX) operations for agent use: open/create, paragraphs, tables, headers/footers, charts, images.
+    /// Edit Word documents (.docx): text, tables, lists, images and charts.
+    /// Also headers/footers, table of contents, Markdown import/export and PDF export.
+    /// For a document that follows a fixed template use OfficeSupportTool; for low-level
+    /// element-by-element edits the other office tools can't express use OfficeTool.
     /// </summary>
     public class DocumentTool : BaseAgentTool, IDisposable, IFileTool
     {
