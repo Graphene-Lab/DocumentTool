@@ -1871,7 +1871,19 @@ namespace AIOrchestrator.API
             {
                 case DocumentCreationResult.Success:
                     var pdf = Directory.GetFiles(outputHostDir, "*.pdf").OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc).FirstOrDefault();
-                    return $"Success — document generated at {SandboxPath.ToAgent(pdf ?? outputHostDir)}";
+                    var pdfPath = pdf ?? outputHostDir;
+                    var deliveredPath = SandboxPath.ToAgent(pdfPath);
+                    // The TaskCompleted event carries only text — a path written as plain text is NOT
+                    // attached to the chat, so a client such as Giraffe AI renders nothing (issue #110).
+                    // The single, deterministic way to deliver the finished PDF is to finish with the
+                    // reserved "done" method AND put the sandbox path in its "attachments" field; the
+                    // harness resolves it (reading the bytes, or a local reference for huge files) and
+                    // wraps it in the MCP embedded-resource shape any client can render and download.
+                    return
+                        "Success — document generated at " + deliveredPath + ". " +
+                        "Finish with the done method and attach the finished PDF so the client can download it, " +
+                        "for example: " +
+                        "{\"method\":\"done\",\"message\":\"Document ready.\",\"attachments\":[\"" + deliveredPath + "\"]}";
                 case DocumentCreationResult.InsufficientSources:
                     return "Error: the provided context is not sufficient and the topic appears to be internal/private material that cannot be retrieved online. Enrich the context files (more or better documents) and retry, or give up.";
                 case DocumentCreationResult.ContextTooLarge:

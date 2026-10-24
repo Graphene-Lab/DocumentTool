@@ -561,7 +561,12 @@ namespace CreateDocumentAgentTests
                 // not an error, never a literal token.
                 var msg = result.Message ?? "";
                 var ok3 = !msg.StartsWith("Error", StringComparison.OrdinalIgnoreCase) && !msg.Contains("Error:");
-                Record(ok1 && ok2 && ok3, "T5 sync flow", $"pdf={pdf != null} info={ok2} message='{Truncate(msg, 90)}'");
+                // Issue #110: the document must be DELIVERED, not just reported. The completion event is
+                // text-only, so the agent has to finish with the "done" method AND put the PDF sandbox path
+                // in its "attachments" field; the harness then resolves it and the result carries it.
+                var ok4 = result.Attachments is { Count: > 0 } &&
+                           result.Attachments.Any(a => a.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+                Record(ok1 && ok2 && ok3 && ok4, "T5 sync flow", $"pdf={pdf != null} info={ok2} message='{Truncate(msg, 90)}' attachments={(result.Attachments?.Count ?? 0).ToString()}");
             }
             catch (Exception ex) { Record(false, "T5 sync flow", ex.Message); }
         }
