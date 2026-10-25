@@ -15,6 +15,7 @@ namespace AIOrchestrator.API
     /// For a document that follows a fixed template use OfficeSupportTool; for low-level
     /// element-by-element edits the other office tools can't express use OfficeTool.
     /// </summary>
+    [ToolPurpose(ToolPurpose.Documents)]
     public class DocumentTool : BaseAgentTool, IDisposable, IFileTool
     {
         /// <summary>This tool can start long-running background document generations whose completion is
