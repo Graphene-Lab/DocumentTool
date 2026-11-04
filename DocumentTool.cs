@@ -1202,8 +1202,7 @@ namespace AIOrchestrator.API
             }
         }
 
-        /// <summary>Creates a DOCX document from markdown text (preferred for creation) or from a markdown file,
-        /// using DocSharp.Markdown's MarkdownConverter.
+        /// <summary>Creates a DOCX document from markdown text (preferred for creation) or from a markdown file, using DocSharp.Markdown's MarkdownConverter. Give the returned path to the user as an attached file unless the user asked otherwise.
         /// Supported markdown: headings H1-H6, paragraphs, bold, italic, inline code, fenced code blocks,
         /// block quotes, thematic breaks, ordered/unordered/nested lists, tables, links, and images.
         /// Does NOT support mermaid diagrams. Provide exactly one of <paramref name="markdown"/> or <paramref name="markdownFile"/>.</summary>
