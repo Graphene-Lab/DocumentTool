@@ -1,14 +1,14 @@
 # DocumentTool — Document (DOCX) agent tool
 
 Document (DOCX) operations for LLM agents: open/create, paragraphs, tables,
-headers/footers, charts, images. Implements `AIOrchestrator.API.IAgentTool`.
+headers/footers, charts, images. Derives from `AIOrchestrator.API.BaseAgentTool`.
 
 ## What it is
 
 A **plugin** for hosts built on [Graphene.AIOrchestrator](https://github.com/Graphene-Lab/AIOrchestrator)
 (e.g. AIOffice): the assembly is loaded dynamically from the host's `Tools/` folder
 at startup (or hot-added via a filesystem watcher) and its public methods become
-LLM-callable tools through the `UISupportGeneric.Analyzer.GeToolDefinitions`
+LLM-callable tools through the `UISupportGeneric.Analyzer.GetToolDefinitions`
 reflection pipeline.
 
 ## Usage
